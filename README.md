@@ -13,6 +13,7 @@ This small system comes packaged up in the examples directory. In this system th
 
 Here are some code fragemnts from each of the three lanaguages using wtf.
 
+### C
 ```c
 #include <wtf/walrus.h>
 struct WTFTest t = {
@@ -30,6 +31,7 @@ else if(strncmp(expected, response, len) != 0)
 }
 ```
 
+### Python
 ```python
 import walrus
 wtf = walrus.Test('192.168.147.100', 'hyrule', 'zelda')
@@ -40,6 +42,7 @@ if msg != 'do you know the muffin man?':
     wtf.error('unexpected message: %s'%msg)
 ```
 
+### Perl
 ```perl
 use Walrus;
 my $wtf = Walrus->new('192.168.147.100', 'hyrule', 'darunia');
