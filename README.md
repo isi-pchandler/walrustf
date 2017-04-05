@@ -1,17 +1,17 @@
 # Walrus Testing Framework
 
-| ![Monty](doc/monty.png) |
-|:---:|
-| <sup><sub> Artwork courtesy of Tien-Hsin Cindy Wu </sub></sup> |
+![Monty](doc/monty.png)
+<br />
+<sup> Artwork courtesy of Tien-Hsin Cindy Wu </sup>
 
 wtf is a simple testing framework for distributed systems. The basic thing that it does is allow disparate programs within a distributed system to record test results to a centralized location. Bindings for a number of languages are provided. 
 
 Consider the example below. <br />
 ![Hyrule](doc/hyrule.png)
 
-This small system comes packaged up in the examples directory. In this system there are 3 programs running on 3 computers named after famous Zelda characters. Each is written in a different programming language, Link in C, Zelda in Python and Darunia in Perl. Test programs for each of the participants have been written in the unit testing style. However, in this case the test results are being set over the network to the wtf collector. Once a test is completed there is a command line utility called `wtf` to view the results of a distributed test.
+This small system comes packaged up in the examples directory. In this system there are 3 programs running on 3 computers named after famous Zelda characters. Each is written in a different programming language, Link in C, Zelda in Python and Darunia in Perl. Test programs for each of the participants have been written in the unit testing style. However, in this case the test results are being sent over the network to the wtf collector. Once a test is completed there is a command line utility called `wtf` to view the results of a distributed test.
 
-Here are some code fragemnts from each of the three lanaguages using wtf.
+Here are some code fragemnts from the example above using wtf.
 
 ### C
 ```c
