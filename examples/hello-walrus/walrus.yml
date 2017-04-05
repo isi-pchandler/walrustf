@@ -1,0 +1,13 @@
+---
+- hosts: all
+  become: true
+
+  tasks:
+    - name: Install packages
+      apt: name={{item}} state=latest update_cache=yes
+      with_items:
+        - redis-server
+        - python3-pip
+
+    - name: Install redis-python
+      command: pip3 install redis

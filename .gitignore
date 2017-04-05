@@ -1,0 +1,7 @@
+*.sw*
+*.o
+*.a
+*.so*
+__pycache__
+*.retry
+

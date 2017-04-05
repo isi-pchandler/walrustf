@@ -1,0 +1,46 @@
+# vim: syntax=ruby
+
+Vagrant.configure("2") do |config|
+
+  config.vm.box = 'debian-stretch'
+  config.vm.box_url = 'http://mirror.deterlab.net/mirrors/debian-cd/box/debian-stretch-amd64-libvirt.box'
+  config.vm.synced_folder '../../', '/opt/walrus', type: 'nfs'
+  config.vm.synced_folder '../../../oss/hiredis', '/opt/hiredis', type: 'nfs'
+
+  config.vm.provider :libvirt do |vm|
+    vm.storage :file, :size => '10G', :type => 'qcow2'
+    vm.driver = 'kvm'
+    vm.cpus = 1
+    vm.graphics_type = 'vnc'
+  end
+
+  config.vm.define :walrus do |walrus|
+    walrus.vm.hostname = 'walrus'
+    walrus.vm.network "private_network", ip: "192.168.147.100"
+    walrus.vm.provision 'ansible' do |ansible|
+      ansible.playbook = 'walrus.yml'
+    end
+  end
+
+  config.vm.define :link do |link|
+    link.vm.hostname = 'link'
+    link.vm.network "private_network", ip: "192.168.147.2"
+    link.vm.provision 'ansible' do |ansible|
+      ansible.playbook = 'link.yml'
+    end
+  end
+  
+  config.vm.define :zelda do |zelda|
+    zelda.vm.network "private_network", ip: "192.168.147.3"
+    zelda.vm.hostname = 'zelda'
+    zelda.vm.provision 'ansible' do |ansible|
+      ansible.playbook = 'zelda.yml'
+    end
+  end
+  
+  config.vm.define :darunia do |darunia|
+    darunia.vm.network "private_network", ip: "192.168.147.4"
+    darunia.vm.hostname = 'darunia'
+  end
+
+end

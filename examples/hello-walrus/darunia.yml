@@ -1,0 +1,14 @@
+---
+- hosts: all
+  become: true
+
+  tasks:
+    - name: Install packages
+      apt: name={{item}} state=latest update_cache=yes
+      with_items:
+        - bash-completion
+        - build-essential
+        - cpanminus
+
+    - name: Install python
+      command: cpanm Redis
