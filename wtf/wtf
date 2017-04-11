@@ -27,7 +27,7 @@ colors = {
 
 diagnostics = {}
 
-for x in r.scan(match=pattern)[1]:
+for x in r.scan_iter(match=pattern):
     k = x.decode('utf-8')
     
     test, participant, counter, *_ = k.split(':', 4)
