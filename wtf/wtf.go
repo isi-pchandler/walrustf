@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 )
@@ -23,6 +24,8 @@ type Condition struct {
 	Satisfied            bool
 }
 
+var conn *redis.Client
+
 func main() {
 	log.SetFlags(0)
 	if len(os.Args) < 2 {
@@ -30,6 +33,10 @@ func main() {
 	}
 
 	filename := os.Args[1]
+
+	conn = redis.NewClient(&redis.Options{
+		Addr: "localhost:6379",
+	})
 
 	buf, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -44,16 +51,29 @@ func main() {
 
 	bw := color.New(color.FgWhite).Add(color.Underline).Add(color.Bold)
 	bw.Printf("running %d tests\n", len(testSpecs))
+	red := color.New(color.FgRed)
 
 	for _, t := range testSpecs {
 		color.Blue("[%s]", t.Name)
-		launch(t)
+		err := launch(t)
+		if err != nil {
+			red.Printf("%v\n", err)
+			continue
+		}
 		wait(t)
 	}
 }
 
-func launch(t TestSpec) {
+func launch(t TestSpec) error {
 
+	cmd_line := strings.Fields(t.Launch)
+	cmd := exec.Command(cmd_line[0], cmd_line[1:]...)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Printf("%s", out)
+		return fmt.Errorf("launch command failed: %v", err)
+	}
+	return nil
 }
 
 func wait(t TestSpec) {
@@ -80,9 +100,6 @@ func finished(t TestSpec) bool {
 
 	green := color.New(color.FgGreen)
 
-	conn := redis.NewClient(&redis.Options{
-		Addr: "localhost:6379",
-	})
 	_, err := conn.Ping().Result()
 	if err != nil {
 		log.Fatal("failed to connect to redis: %v", err)

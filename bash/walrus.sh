@@ -2,40 +2,42 @@
 
 usage() {
 	echo "usage:"
-	echo "  wtf [error|warning|ok] test participant counter msg"
+	echo "  wtf collector [error|warning|ok] test participant counter msg"
 }
 
 report() {
-	t=`redis-cli --raw time`
+	redis="redis-cli -h $collector"
+	t=`$redis --raw time`
 	t0=`sed -n 1p <<< "$t"`
 	t1=`sed -n 2p <<< "$t"`
-	echo "[report] time $t0 $t1"
+	#echo "[report] time $t0 $t1"
 	
 	
 	key=`printf "%s:%s:%s" $test_ $participant $counter`
 	value=`printf "%s:::%s" $level $msg`
 
-	echo "[report] $key"
-	echo "[report] $value"
+	#echo "[report] $key"
+	#echo "[report] $value"
 
-	redis-cli SET $key $value
+	$redis SET $key $value &> /dev/null
 
 	time_key=`printf "%s:~time~" $key`
-	redis-cli DEL $time_key
-	redis-cli RPUSH $time_key $t0
-	redis-cli RPUSH $time_key $t1
+	$redis DEL $time_key &> /dev/null
+	$redis RPUSH $time_key $t0 &> /dev/null
+	$redis RPUSH $time_key $t1 &> /dev/null
 }
 
-if [[ "$#" -ne 5 ]]; then
+if [[ "$#" -ne 6 ]]; then
 	usage
 	exit 1
 fi
 
-level=$1
-test_=$2
-participant=$3
-counter=$4
-msg=$5
+collector=$1
+level=$2
+test_=$3
+participant=$4
+counter=$5
+msg=$6
 
 case $level in
 	error|warning|ok)
