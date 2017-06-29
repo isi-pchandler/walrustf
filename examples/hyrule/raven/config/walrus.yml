@@ -1,0 +1,42 @@
+---
+- hosts: all
+  become: true
+
+  tasks:
+    - name: Install packages
+      apt: name={{item}} state=latest update_cache=yes
+      with_items:
+        - redis-server
+        - python3-pip
+        - git
+        - golang
+
+    - name: Install redis-python
+      command: pip3 install redis
+
+    - file:
+        path: "/home/rvn/.go"
+        state: directory
+
+    - lineinfile:
+        dest: "/home/rvn/.bashrc"
+        line: export GOPATH=/home/rvn/.go
+
+    - shell: go get github.com/go-redis/redis
+      environment:
+        GOPATH: /home/rvn/.go
+
+    - shell: "{{item}}"
+      with_items:
+        - ip addr add 192.168.147.100/24 dev eth1 | sleep 0
+        - ip link set up dev eth1
+
+    - name: Set redis listening address
+      lineinfile:
+        name: /etc/redis/redis.conf
+        regexp: "^bind *"
+        line: "bind 0.0.0.0"
+
+    - service:
+        name: redis
+        state: restarted

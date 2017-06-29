@@ -1,0 +1,21 @@
+---
+- hosts: all
+  become: true
+
+  tasks:
+    - name: Install packages
+      apt: name={{item}} state=latest update_cache=yes
+      with_items:
+        - bash-completion
+        - build-essential
+        - libhiredis-dev
+
+    - shell: "{{item}}"
+      with_items:
+        - ip addr add 192.168.147.2/24 dev eth1 | sleep 0
+        - ip link set up dev eth1
+
+          #- name: Install hiredis
+          #command: make install
+          #args:
+          #chdir: /opt/hiredis

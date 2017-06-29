@@ -1,0 +1,37 @@
+---
+- hosts: all
+  become: true
+
+  tasks:
+    - name: Install packages
+      apt: name={{item}} state=latest update_cache=yes
+      with_items:
+        - bash-completion
+        - git
+        - golang
+
+    - file:
+        path: "/home/rvn/.go"
+        state: directory
+
+    - file:
+        path: "/home/rvn/.go/src/github.com/rcgoodfellow"
+        state: directory
+    - file:
+        src: "/opt/walrus"
+        dest: "/home/rvn/.go/src/github.com/rcgoodfellow/walrustf"
+        state: link
+
+    - lineinfile:
+        dest: "/home/rvn/.bashrc"
+        line: export GOPATH=/home/rvn/.go
+
+    - shell: go get github.com/go-redis/redis
+      environment:
+        GOPATH: /home/rvn/.go
+
+    - shell: "{{item}}"
+      with_items:
+        - ip addr add 192.168.147.5/24 dev eth1 | sleep 0
+        - ip link set up dev eth1
+
