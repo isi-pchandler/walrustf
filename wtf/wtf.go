@@ -2,70 +2,81 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"github.com/fatih/color"
 	"github.com/go-redis/redis"
 	"io/ioutil"
 	"log"
-	"os"
 	"os/exec"
 	"strings"
 	"time"
 )
 
-type TestSpec struct {
-	Name, Launch  string
-	Timeout       uint
-	Success, Fail []Condition
-}
-
-type Condition struct {
-	Status, Who, Message string
-	Satisfied            bool
-}
-
 var conn *redis.Client
+var tds *TestDefs
+var collector = flag.String("collector", "localhost", "walrus instance to use")
 
 func main() {
+
 	log.SetFlags(0)
-	if len(os.Args) < 2 {
+	flag.Parse()
+
+	if len(flag.Args()) < 2 {
 		usage()
 	}
 
-	filename := os.Args[1]
+	dbConnect()
+	loadTest(flag.Args()[1])
 
-	conn = redis.NewClient(&redis.Options{
-		Addr: "localhost:6379",
-	})
-
-	buf, err := ioutil.ReadFile(filename)
-	if err != nil {
-		log.Fatalf("error reading '%s': %v", filename, err)
+	switch flag.Args()[0] {
+	case "launch":
+		doLaunch()
+	case "watch":
+		doWatch()
+	default:
+		usage()
 	}
 
-	var testSpecs []TestSpec
-	err = json.Unmarshal(buf, &testSpecs)
-	if err != nil {
-		log.Fatalf("error parsing '%s': %v", filename, err)
-	}
+}
 
-	bw := color.New(color.FgWhite).Add(color.Underline).Add(color.Bold)
-	bw.Printf("running %d tests\n", len(testSpecs))
-	red := color.New(color.FgRed)
+func doLaunch() {
 
-	for _, t := range testSpecs {
-		color.Blue("[%s]", t.Name)
+	log.Printf(bold("running %d tests"), len(tds.Tests))
+
+	go launchAll()
+
+	doWatch()
+
+}
+
+func launchAll() {
+
+	for _, t := range tds.Tests {
 		err := launch(t)
 		if err != nil {
-			red.Printf("%v\n", err)
+			log.Printf(red("%v\n"), err)
 			continue
 		}
+	}
+
+	writeResults(tds)
+
+}
+
+func doWatch() {
+
+	for _, t := range tds.Tests {
+		color.Blue("[%s]", t.Name)
 		wait(t)
 	}
+
 }
 
 func launch(t TestSpec) error {
 
+	//extract and execute the launch command for the test
+	//fmt.Printf("running launch script...")
 	cmd_line := strings.Fields(t.Launch)
 	cmd := exec.Command(cmd_line[0], cmd_line[1:]...)
 	out, err := cmd.CombinedOutput()
@@ -78,12 +89,10 @@ func launch(t TestSpec) error {
 
 func wait(t TestSpec) {
 
-	red := color.New(color.FgRed)
-
 	end := time.Now().Add(time.Duration(t.Timeout) * time.Second)
 	for time.Now().Before(end) {
 		remaining := end.Sub(time.Now()).Seconds()
-		fmt.Printf("\r%f", remaining)
+		fmt.Printf("\r%f                  ", remaining)
 		if finished(t) {
 			return
 		}
@@ -92,26 +101,25 @@ func wait(t TestSpec) {
 
 	fmt.Print("         \r")
 
-	red.Printf("timeout!\n")
+	log.Printf(red("timeout!\n"))
 
 }
 
 func finished(t TestSpec) bool {
-
-	green := color.New(color.FgGreen)
 
 	_, err := conn.Ping().Result()
 	if err != nil {
 		log.Fatal("failed to connect to redis: %v", err)
 	}
 
+	//TODO check failure condition
 	result := true
 	for i, _ := range t.Success {
 		c := &t.Success[i]
 		if !c.Satisfied {
 			testCondition(t.Name, c, conn)
 			if c.Satisfied {
-				green.Printf("\r%v\n", *c)
+				logTestPassed(c)
 			} else {
 				result = false
 			}
@@ -119,6 +127,11 @@ func finished(t TestSpec) bool {
 	}
 	return result
 
+}
+
+func logTestPassed(c *Condition) {
+	green := color.New(color.FgGreen)
+	green.Printf("\r%v\n", *c)
 }
 
 func testCondition(test string, c *Condition, db *redis.Client) {
@@ -137,6 +150,85 @@ func testCondition(test string, c *Condition, db *redis.Client) {
 	}
 }
 
-func usage() {
-	log.Fatal("usage: wtf testfile.json")
+func loadTest(filename string) {
+
+	buf, err := ioutil.ReadFile(filename)
+	if err != nil {
+		log.Fatalf("error reading '%s': %v", filename, err)
+	}
+
+	tds = &TestDefs{}
+	err = json.Unmarshal(buf, tds)
+	if err != nil {
+		log.Fatalf("error parsing '%s': %v", filename, err)
+	}
+
 }
+
+func writeResults(tds *TestDefs) {
+
+	buf, err := json.MarshalIndent(tds, "", "  ")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = ioutil.WriteFile(tds.Name+"_results.json", buf, 0644)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+}
+
+func dbConnect() {
+
+	conn = redis.NewClient(&redis.Options{
+		Addr: fmt.Sprintf("%s:6379", *collector),
+	})
+
+	if conn == nil {
+		log.Fatal("could not connect to redis")
+	}
+
+	_, err := conn.Ping().Result()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+}
+
+func usage() {
+	s := red("usage:\n")
+	s += fmt.Sprintf("  %s [-collector=host] ( %s | %s ) tests.json",
+		blue("wtf"),
+		green("launch"),
+		green("watch"),
+	)
+	log.Fatal(s)
+}
+
+type TestSpec struct {
+	Name, Launch  string
+	Timeout       uint
+	Success, Fail []Condition
+}
+
+type TestDefs struct {
+	Name  string
+	Tests []TestSpec
+}
+
+type Condition struct {
+	Status, Who, Message string
+	Satisfied            bool
+}
+
+var blueb = color.New(color.FgBlue, color.Bold).SprintFunc()
+var blue = color.New(color.FgBlue).SprintFunc()
+var cyan = color.New(color.FgCyan).SprintFunc()
+var cyanb = color.New(color.FgCyan, color.Bold).SprintFunc()
+var greenb = color.New(color.FgGreen, color.Bold).SprintFunc()
+var green = color.New(color.FgGreen).SprintFunc()
+var red = color.New(color.FgRed).SprintFunc()
+var redb = color.New(color.FgRed, color.Bold).SprintFunc()
+var yellow = color.New(color.FgYellow).SprintFunc()
+var bold = color.New(color.Bold).SprintFunc()
