@@ -89,11 +89,13 @@ func launch(t TestSpec) error {
 
 func wait(t TestSpec) {
 
+	begin := time.Now()
 	end := time.Now().Add(time.Duration(t.Timeout) * time.Second)
 	for time.Now().Before(end) {
+		elapsed := time.Now().Sub(begin).Seconds()
 		remaining := end.Sub(time.Now()).Seconds()
 		fmt.Printf("\r%f                  ", remaining)
-		if finished(t) {
+		if finished(t, elapsed) {
 			return
 		}
 		time.Sleep(50 * time.Millisecond)
@@ -105,7 +107,7 @@ func wait(t TestSpec) {
 
 }
 
-func finished(t TestSpec) bool {
+func finished(t TestSpec, elapsed float64) bool {
 
 	_, err := conn.Ping().Result()
 	if err != nil {
@@ -119,7 +121,7 @@ func finished(t TestSpec) bool {
 		if !c.Satisfied {
 			testCondition(t.Name, c, conn)
 			if c.Satisfied {
-				logTestPassed(c)
+				logTestPassed(c, elapsed)
 			} else {
 				result = false
 			}
@@ -129,9 +131,12 @@ func finished(t TestSpec) bool {
 
 }
 
-func logTestPassed(c *Condition) {
-	green := color.New(color.FgGreen)
-	green.Printf("\r%v\n", *c)
+func logTestPassed(c *Condition, elapsed float64) {
+	log.Printf("\r%s: %s @%ss", 
+		cyan(c.Who), 
+		green(c.Message), 
+		bold(fmt.Sprintf("%f", elapsed)),
+	)	
 }
 
 func testCondition(test string, c *Condition, db *redis.Client) {
