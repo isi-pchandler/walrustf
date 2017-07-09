@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -95,7 +96,7 @@ func wait(t TestSpec) {
 		elapsed := time.Now().Sub(begin).Seconds()
 		remaining := end.Sub(time.Now()).Seconds()
 		fmt.Printf("\r%f                  ", remaining)
-		if finished(t, elapsed) {
+		if finished(t, begin, elapsed) {
 			return
 		}
 		time.Sleep(50 * time.Millisecond)
@@ -107,7 +108,7 @@ func wait(t TestSpec) {
 
 }
 
-func finished(t TestSpec, elapsed float64) bool {
+func finished(t TestSpec, start time.Time, elapsed float64) bool {
 
 	_, err := conn.Ping().Result()
 	if err != nil {
@@ -119,7 +120,7 @@ func finished(t TestSpec, elapsed float64) bool {
 	for i, _ := range t.Success {
 		c := &t.Success[i]
 		if !c.Satisfied {
-			testCondition(t.Name, c, conn)
+			testCondition(t.Name, c, conn, start)
 			if c.Satisfied {
 				logTestPassed(c, elapsed)
 			} else {
@@ -132,27 +133,46 @@ func finished(t TestSpec, elapsed float64) bool {
 }
 
 func logTestPassed(c *Condition, elapsed float64) {
-	log.Printf("\r%s: %s @%ss", 
-		cyan(c.Who), 
-		green(c.Message), 
+	log.Printf("\r%s: %s @%ss",
+		cyan(c.Who),
+		green(c.Message),
 		bold(fmt.Sprintf("%f", elapsed)),
-	)	
+	)
 }
 
-func testCondition(test string, c *Condition, db *redis.Client) {
-	//c.Satisfied = true
+func testCondition(test string, c *Condition, db *redis.Client, start time.Time) {
+
+	var ts time.Time
+	satisfied := false
+
 	match := fmt.Sprintf("%s:%s:*", test, c.Who)
 	iter := db.Scan(0, match, 0).Iterator()
+
 	for iter.Next() {
-		if strings.HasSuffix(iter.Val(), "~time~") {
-			continue
-		}
-		val, _ := db.Get(iter.Val()).Result()
-		ss := strings.Split(val, ":::")
-		if len(ss) == 2 && ss[0] == c.Status && ss[1] == c.Message {
-			c.Satisfied = true
+		v := iter.Val()
+
+		if strings.HasSuffix(v, "~time~") {
+			vs, _ := db.LRange(v, 0, 1).Result()
+			s := vs[0]
+			us := vs[1]
+			secs, _ := strconv.Atoi(s)
+			usecs, _ := strconv.Atoi(us)
+			ts = time.Unix(int64(secs), 0)
+			ts = ts.Add(time.Duration(usecs) * time.Microsecond)
+		} else {
+			val, _ := db.Get(v).Result()
+			ss := strings.Split(val, ":::")
+			if len(ss) == 2 && ss[0] == c.Status && ss[1] == c.Message {
+				satisfied = true
+				//c.Satisfied = true
+			}
 		}
 	}
+
+	if ts.After(start) && satisfied {
+		c.Satisfied = true
+	}
+
 }
 
 func loadTest(filename string) {
