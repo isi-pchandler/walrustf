@@ -4,4 +4,5 @@
 *.so*
 __pycache__
 *.retry
+.rvn
 

@@ -11,8 +11,7 @@ sub new {
   my $self = {
     collector => shift,
     test => shift,
-    participant => shift,
-    counter => 0,
+    participant => shift
   };
   bless($self, $class);
   return($self);
@@ -20,16 +19,20 @@ sub new {
 
 sub report {
   my ($self, $level, $msg) = @_;
+
+  # connect to collector
   my $redis = Redis->new(server => "$self->{collector}:6379");
-  my $key = "$self->{test}:$self->{participant}:$self->{counter}";
-  my $value = "${level}:::$msg";
-  $redis->set($key => $value);
+
+  # get the time according to collector
   my @time = $redis->time();
-  $redis->del("$key:~time~");
-  $redis->rpush("$key:~time~" => $time[0]);
-  $redis->rpush("$key:~time~" => $time[1]);
+
+  # create a key/value pair for this diagnostic
+  my $key = "$self->{test}:$self->{participant}:$time[0]:$time[1]";
+  my $value = "${level}:::$msg";
+
+  # send and close connection
+  $redis->set($key => $value);
   $redis->quit();
-  $self->{counter}++;
 }
 
 sub error {

@@ -1,3 +1,11 @@
+/******************************************************************************
+ *
+ * Walrus Test Framework
+ * Copyright Ryan Goodfellow 2017, all rights reserved
+ * Apache 2.0
+ *
+ *****************************************************************************/
+
 package walrustf
 
 import (
@@ -39,7 +47,13 @@ func (c *Client) Ok(format string, args ...interface{}) error {
 }
 
 func (c *Client) report(level, format string, args ...interface{}) error {
+
 	_, err := c.conn.Ping().Result()
+	if err != nil {
+		return err
+	}
+
+	t, err := c.conn.Time().Result()
 	if err != nil {
 		return err
 	}
@@ -47,10 +61,11 @@ func (c *Client) report(level, format string, args ...interface{}) error {
 	msg := fmt.Sprintf(format, args...)
 
 	key := fmt.Sprintf(
-		"%s:%s:%d",
+		"%s:%s:%d:%d",
 		c.test,
 		c.participant,
-		c.counter,
+		t.Unix(),
+		t.UnixNano(),
 	)
 
 	value := fmt.Sprintf(
@@ -62,23 +77,6 @@ func (c *Client) report(level, format string, args ...interface{}) error {
 	if err != nil {
 		return nil
 	}
-
-	t, err := c.conn.Time().Result()
-	if err != nil {
-		return err
-	}
-
-	err = c.conn.Del(fmt.Sprintf("%s:~time~", key)).Err()
-	if err != nil {
-		return err
-	}
-
-	err = c.conn.RPush(fmt.Sprintf("%s:~time~", key), t.Unix(), t.UnixNano()).Err()
-	if err != nil {
-		return err
-	}
-
-	c.counter++
 
 	return nil
 
