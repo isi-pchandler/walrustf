@@ -143,7 +143,6 @@ func logTestPassed(c *Condition, elapsed float64) {
 func testCondition(test string, c *Condition, db *redis.Client, start time.Time) {
 
 	var ts time.Time
-	satisfied := false
 
 	match := fmt.Sprintf("%s:%s:*", test, c.Who)
 	iter := db.Scan(0, match, 0).Iterator()
@@ -151,27 +150,58 @@ func testCondition(test string, c *Condition, db *redis.Client, start time.Time)
 	for iter.Next() {
 		v := iter.Val()
 
-		if strings.HasSuffix(v, "~time~") {
-			vs, _ := db.LRange(v, 0, 1).Result()
-			s := vs[0]
-			us := vs[1]
-			secs, _ := strconv.Atoi(s)
-			usecs, _ := strconv.Atoi(us)
-			ts = time.Unix(int64(secs), 0)
-			ts = ts.Add(time.Duration(usecs) * time.Microsecond)
-		} else {
-			val, _ := db.Get(v).Result()
-			ss := strings.Split(val, ":::")
-			if len(ss) == 2 && ss[0] == c.Status && ss[1] == c.Message {
-				satisfied = true
-				//c.Satisfied = true
+		parts := strings.Split(v, ":")
+		if len(parts) != 4 {
+			log.Printf("bad key format %s", v)
+			continue
+		}
+
+		sec, err := strconv.Atoi(parts[2])
+		if err != nil {
+			log.Printf("bad key format - unable to parse seconds %s", v)
+			continue
+		}
+		usec, err := strconv.Atoi(parts[3])
+		if err != nil {
+			log.Printf("bad key format - unable to parse microseconds %s", v)
+			continue
+		}
+		ts = time.Unix(int64(sec), 0)
+		ts = ts.Add(time.Duration(usec) * time.Microsecond)
+
+		/*
+			if strings.HasSuffix(v, "~time~") {
+				vs, _ := db.LRange(v, 0, 1).Result()
+				s := vs[0]
+				us := vs[1]
+				secs, _ := strconv.Atoi(s)
+				usecs, _ := strconv.Atoi(us)
+				ts = time.Unix(int64(secs), 0)
+				ts = ts.Add(time.Duration(usecs) * time.Microsecond)
+			} else {
+				val, _ := db.Get(v).Result()
+				ss := strings.Split(val, ":::")
+				if len(ss) == 2 && ss[0] == c.Status && ss[1] == c.Message {
+					satisfied = true
+					//c.Satisfied = true
+				}
+			}
+		*/
+		val, _ := db.Get(v).Result()
+		ss := strings.Split(val, ":::")
+		//log.Println(val)
+		if len(ss) == 2 && ss[0] == c.Status && ss[1] == c.Message {
+			if ts.After(start) {
+				c.Satisfied = true
 			}
 		}
 	}
 
-	if ts.After(start) && satisfied {
-		c.Satisfied = true
-	}
+	/*
+		if ts.After(start) && satisfied {
+			c.Satisfied = true
+		}
+	*/
 
 }
 

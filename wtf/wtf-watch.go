@@ -55,15 +55,18 @@ func showKey(key string) {
 	key_parts := strings.Split(key, ":")
 	if len(key_parts) != 4 {
 		log.Printf("bad key format %s", key)
+		return
 	}
 
 	sec, err := strconv.Atoi(key_parts[2])
 	if err != nil {
 		log.Printf("bad key format - unable to parse seconds %s", key)
+		return
 	}
 	nsec, err := strconv.Atoi(key_parts[3])
 	if err != nil {
 		log.Printf("bad key format - unable to parse nanoseconds %s", key)
+		return
 	}
 
 	t := time.Unix(int64(sec), int64(nsec))
@@ -73,6 +76,7 @@ func showKey(key string) {
 	parts := strings.Split(value, ":::")
 	if len(parts) != 2 {
 		log.Printf("bad value format %s", value)
+		return
 	}
 
 	msg := ""
