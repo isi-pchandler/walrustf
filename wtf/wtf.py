@@ -30,6 +30,9 @@ diagnostics = {}
 for x in r.scan_iter(match=pattern):
     k = x.decode('utf-8')
     
+    if '~seq~' in k:
+        continue
+    
     test, participant, counter, *_ = k.split(':', 4)
 
     key = '[%s:%s:%s]'%(
@@ -44,6 +47,7 @@ for x in r.scan_iter(match=pattern):
         participant,
         colors['clear'], 
         counter)
+
 
     if key not in diagnostics:
         diagnostics[key] = {}

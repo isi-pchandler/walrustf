@@ -39,7 +39,28 @@ func (c *Client) Ok(format string, args ...interface{}) error {
 }
 
 func (c *Client) report(level, format string, args ...interface{}) error {
+
 	_, err := c.conn.Ping().Result()
+	if err != nil {
+		return err
+	}
+
+	/*
+		ckey := fmt.Sprintf("%s:%s:~seq~", c.test, c.participant)
+		counter, err := c.conn.Get(ckey).Int64()
+		if err != nil {
+			counter = -1
+		}
+		counter++
+
+		err = c.conn.Set(ckey, counter, 0).Err()
+		if err != nil {
+			return nil
+		}
+		c.counter = int(counter)
+	*/
+
+	t, err := c.conn.Time().Result()
 	if err != nil {
 		return err
 	}
@@ -47,10 +68,11 @@ func (c *Client) report(level, format string, args ...interface{}) error {
 	msg := fmt.Sprintf(format, args...)
 
 	key := fmt.Sprintf(
-		"%s:%s:%d",
+		"%s:%s:%d:%d",
 		c.test,
 		c.participant,
-		c.counter,
+		t.Unix(),
+		t.UnixNano(),
 	)
 
 	value := fmt.Sprintf(
@@ -63,22 +85,19 @@ func (c *Client) report(level, format string, args ...interface{}) error {
 		return nil
 	}
 
-	t, err := c.conn.Time().Result()
-	if err != nil {
-		return err
-	}
+	/*
+		err = c.conn.Del(fmt.Sprintf("%s:~time~", key)).Err()
+		if err != nil {
+			return err
+		}
 
-	err = c.conn.Del(fmt.Sprintf("%s:~time~", key)).Err()
-	if err != nil {
-		return err
-	}
+		err = c.conn.RPush(fmt.Sprintf("%s:~time~", key), t.Unix(), t.UnixNano()).Err()
+		if err != nil {
+			return err
+		}
 
-	err = c.conn.RPush(fmt.Sprintf("%s:~time~", key), t.Unix(), t.UnixNano()).Err()
-	if err != nil {
-		return err
-	}
-
-	c.counter++
+		c.counter++
+	*/
 
 	return nil
 
