@@ -18,19 +18,15 @@ class Test:
 
     def __report(s, level, msg):
         r = redis.StrictRedis(host=s.collector)
-        key = '%s:%s:%d'%(
+        t = r.time()
+        key = '%s:%s:%s:%s'%(
             s.test,
             s.participant,
-            s.counter,
-            )
+            t[0],
+            t[1])
         value = '%s:::%s'%(
             level,
             msg)
 
         r.set(key, value)
-        t = r.time()
-        r.delete("%s:~time~"%key)
-        r.rpush("%s:~time~"%key, t[0])
-        r.rpush("%s:~time~"%key, t[1])
 
-        s.counter += 1

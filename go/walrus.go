@@ -1,3 +1,11 @@
+/******************************************************************************
+ *
+ * Walrus Test Framework
+ * Copyright Ryan Goodfellow 2017, all rights reserved
+ * Apache 2.0
+ *
+ *****************************************************************************/
+
 package walrustf
 
 import (
@@ -45,21 +53,6 @@ func (c *Client) report(level, format string, args ...interface{}) error {
 		return err
 	}
 
-	/*
-		ckey := fmt.Sprintf("%s:%s:~seq~", c.test, c.participant)
-		counter, err := c.conn.Get(ckey).Int64()
-		if err != nil {
-			counter = -1
-		}
-		counter++
-
-		err = c.conn.Set(ckey, counter, 0).Err()
-		if err != nil {
-			return nil
-		}
-		c.counter = int(counter)
-	*/
-
 	t, err := c.conn.Time().Result()
 	if err != nil {
 		return err
@@ -84,20 +77,6 @@ func (c *Client) report(level, format string, args ...interface{}) error {
 	if err != nil {
 		return nil
 	}
-
-	/*
-		err = c.conn.Del(fmt.Sprintf("%s:~time~", key)).Err()
-		if err != nil {
-			return err
-		}
-
-		err = c.conn.RPush(fmt.Sprintf("%s:~time~", key), t.Unix(), t.UnixNano()).Err()
-		if err != nil {
-			return err
-		}
-
-		c.counter++
-	*/
 
 	return nil
 
