@@ -16,10 +16,10 @@ var collector = flag.String("collector", "localhost", "walrus instance to use")
 
 func main() {
 
-	dbConnect()
-
 	log.SetFlags(0)
 	flag.Parse()
+	
+	dbConnect()
 
 	pubsub := conn.PSubscribe("__key*__:*")
 	defer pubsub.Close()
@@ -98,6 +98,8 @@ func showKey(key string) {
 }
 
 func dbConnect() {
+
+	log.Printf("connecting to %s", *collector)
 
 	conn = redis.NewClient(&redis.Options{
 		Addr: fmt.Sprintf("%s:6379", *collector),
