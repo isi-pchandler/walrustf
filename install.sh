@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 version="0.1"
-src="walrus-$version"
+src="v$version"
 archive="$src.tar.gz"
 
 cd /tmp
